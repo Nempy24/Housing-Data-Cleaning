@@ -1,0 +1,180 @@
+select *
+from Nashvielle
+
+--converting the saledate--
+
+select saledate, CONVERT(date, saledate)
+from Nashvielle
+
+update Nashvielle 
+set SaleDate = CONVERT(date,saledate)
+
+alter table nashvielle 
+add saledate2 date;
+
+update Nashvielle
+set saledate2 = CONVERT(date,saledate)
+
+
+--Populating the proprty address
+
+select propertyaddress
+from Nashvielle
+
+
+select propertyaddress
+from Nashvielle
+where PropertyAddress is null
+
+
+select a.ParcelID, a.PropertyAddress, b.ParcelID, b.PropertyAddress, ISNULL(a.PropertyAddress,b.PropertyAddress)
+from Nashvielle a
+join Nashvielle b
+	on a.ParcelID = b.ParcelID
+	and a.[UniqueID ]<> b. [UniqueID ]
+where a.PropertyAddress is null
+
+update a
+set PropertyAddress = ISNULL(a.propertyaddress, b.PropertyAddress)
+from Nashvielle a
+join Nashvielle b
+	on a.ParcelID = b.ParcelID
+	and a.[UniqueID ]<> b. [UniqueID ]
+where a.PropertyAddress is null
+
+
+---Splitting the adress into seperate columns of Address, city and state--
+
+select propertyaddress
+from Nashvielle
+
+select 
+SUBSTRING(propertyaddress, 1, CHARINDEX(',', propertyaddress) -1) as address
+,  substring(propertyaddress, CHARINDEX(',', propertyaddress) +1, LEN(propertyaddress)) as address
+from  Nashvielle
+
+
+alter table nashvielle 
+add propertyaddress2 nvarchar(255)
+
+update Nashvielle
+set propertyAddress2 = SUBSTRING(propertyaddress, 1, CHARINDEX(',', propertyaddress) -1) 
+
+alter table nashvielle 
+add propertycity nvarchar(255)
+
+update Nashvielle
+set propertycity = substring(propertyaddress, CHARINDEX(',', propertyaddress) +1, LEN(propertyaddress)) 
+
+select *
+from Nashvielle
+
+--Splitting Owner adress--
+
+select owneraddress
+from Nashvielle
+
+select 
+parsename(replace(owneraddress, ',' ,'.'),3)
+,parsename(replace(owneraddress, ',' ,'.'),2)
+,parsename(replace(owneraddress, ',' ,'.'),1)
+from Nashvielle
+
+
+alter table nashvielle 
+add owneraddress2 nvarchar(255)
+
+update Nashvielle
+set ownerAddress2 = parsename(replace(owneraddress, ',' ,'.'),3)
+
+alter table nashvielle 
+add ownercity nvarchar(255)
+
+update Nashvielle
+set ownercity = parsename(replace(owneraddress, ',' ,'.'),2)
+
+alter table nashvielle 
+add ownerstate nvarchar(255)
+
+update Nashvielle
+set ownerstate = parsename(replace(owneraddress, ',' ,'.'),1)
+
+select *
+from Nashvielle
+
+---changing the Y and N in soldvacant to Yes and No--
+
+select distinct(SoldAsVacant), COUNT(SoldAsVacant)
+from Nashvielle
+group by SoldAsVacant
+order by 2
+
+select soldasvacant
+, case when soldasvacant = 'Y' then 'Yes'
+       when soldasvacant = 'N' then 'No'
+	   else soldasvacant
+	   end
+from Nashvielle
+
+
+update Nashvielle
+set SoldAsVacant = case when soldasvacant = 'Y' then 'Yes'
+       when soldasvacant = 'N' then 'No'
+	   else soldasvacant
+	   end
+
+select distinct(SoldAsVacant), COUNT(SoldAsVacant)
+from Nashvielle
+group by SoldAsVacant
+order by 2
+
+
+---Removing duplicates using RowNumCTE--
+
+with RowNumCTE as(
+select *,
+	ROW_NUMBER() over(
+	partition by parcelid, 
+				 propertyaddress,
+				 saleprice,
+				 saledate,
+				 legalreference
+				 order by
+					uniqueid
+					) row_num
+from Nashvielle
+)
+select *
+from RowNumCTE
+where row_num >1
+order by PropertyAddress
+
+
+with RowNumCTE as(
+select *,
+	ROW_NUMBER() over(
+	partition by parcelid, 
+				 propertyaddress,
+				 saleprice,
+				 saledate,
+				 legalreference
+				 order by
+					uniqueid
+					) row_num
+from Nashvielle
+)
+delete 
+from RowNumCTE
+where row_num >1
+
+---deleting unsed columns--
+
+select *
+from Nashvielle
+
+alter table nashvielle
+drop column owneraddress,taxdistrict, propertyaddress
+
+
+alter table nashvielle
+drop column saledate
